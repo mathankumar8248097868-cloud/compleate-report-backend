@@ -9,7 +9,8 @@ const db = require("./config/db")
 const app = express()
 
 app.use(cors({
-  origin: "*"
+  origin: "https://mathankumar8248097868-cloud.github.io",
+  credentials: true
 }))
 app.use(express.json())
 
