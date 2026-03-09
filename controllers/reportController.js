@@ -41,8 +41,6 @@ exports.generateReport = async (req, res) => {
     const photos = req.files || [];
     const children = [];
 
-    // ===== TEXT FUNCTIONS =====
-
     const heading = (text) =>
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -72,12 +70,9 @@ exports.generateReport = async (req, res) => {
       });
 
     const blank = () =>
-      new Paragraph({
-        text: "",
-        spacing: { line: 480 }
-      });
+      new Paragraph({ text: "", spacing: { line: 480 } });
 
-    // ================= PAGE 1 =================
+    // PAGE 1
 
     children.push(heading(d.collegeName));
     children.push(heading(d.departmentName));
@@ -106,7 +101,7 @@ exports.generateReport = async (req, res) => {
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
 
-    // ================= PAGE 2 PHOTOS =================
+    // PHOTOS PAGE
 
     children.push(heading("Photos"));
 
@@ -122,29 +117,15 @@ exports.generateReport = async (req, res) => {
 
       children.push(
         new Paragraph({
-          tabStops: [
-            {
-              type: TabStopType.RIGHT,
-              position: TabStopPosition.MAX
-            }
-          ],
+          tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
           spacing: { line: 360 },
           children: [
-
             img1
-              ? new ImageRun({
-                  data: img1,
-                  transformation: { width: 250, height: 170 }
-                })
+              ? new ImageRun({ data: img1, transformation: { width: 250, height: 170 } })
               : new TextRun(""),
-
             new TextRun({ text: "\t" }),
-
             img2
-              ? new ImageRun({
-                  data: img2,
-                  transformation: { width: 250, height: 170 }
-                })
+              ? new ImageRun({ data: img2, transformation: { width: 250, height: 170 } })
               : new TextRun("")
           ]
         })
@@ -156,12 +137,13 @@ exports.generateReport = async (req, res) => {
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
 
-    // ================= CAMP STATISTICS =================
+    // CAMP STATISTICS
 
     const male = Number(d.maleCount || 0);
     const female = Number(d.femaleCount || 0);
 
     const campTable = new Table({
+      alignment: AlignmentType.CENTER,
       width: { size: 60, type: WidthType.PERCENTAGE },
       rows: [
 
@@ -197,7 +179,13 @@ exports.generateReport = async (req, res) => {
           backgroundColor: "lightblue"
         }]
       },
-      options: { plugins: { legend: { display: false } } }
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { title: { display: true, text: "Gender" } },
+          y: { title: { display: true, text: "Number of Patients" } }
+        }
+      }
     });
 
     children.push(heading("Camp Statistics"));
@@ -208,10 +196,7 @@ exports.generateReport = async (req, res) => {
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new ImageRun({
-            data: campChart,
-            transformation: { width: 500, height: 300 }
-          })
+          new ImageRun({ data: campChart, transformation: { width: 500, height: 300 } })
         ]
       })
     );
@@ -219,7 +204,7 @@ exports.generateReport = async (req, res) => {
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
 
-    // ================= SCREENING =================
+    // SCREENING
 
     let screeningRows = [
       ["Dental Caries", Number(d.dentalCaries || 0)],
@@ -228,20 +213,12 @@ exports.generateReport = async (req, res) => {
     ];
 
     if (d.extraScreening) {
-
-      try {
-
-        const extra = JSON.parse(d.extraScreening);
-
-        extra.forEach(i => {
-          screeningRows.push([i.name, Number(i.value || 0)]);
-        });
-
-      } catch {}
-
+      const extra = JSON.parse(d.extraScreening);
+      extra.forEach(i => screeningRows.push([i.name, Number(i.value || 0)]));
     }
 
     const screeningTable = new Table({
+      alignment: AlignmentType.CENTER,
       width: { size: 70, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
@@ -250,13 +227,10 @@ exports.generateReport = async (req, res) => {
             new TableCell({ children: [normalText("No of Patients", true)] })
           ]
         }),
-
         ...screeningRows.map(row =>
           new TableRow({
             children: row.map(v =>
-              new TableCell({
-                children: [normalText(v, true)]
-              })
+              new TableCell({ children: [normalText(v, true)] })
             )
           })
         )
@@ -271,6 +245,13 @@ exports.generateReport = async (req, res) => {
           data: screeningRows.map(r => r[1]),
           backgroundColor: "lightblue"
         }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { title: { display: true, text: "Diagnosis" } },
+          y: { title: { display: true, text: "Number of Patients" } }
+        }
       }
     });
 
@@ -282,10 +263,7 @@ exports.generateReport = async (req, res) => {
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new ImageRun({
-            data: screeningChart,
-            transformation: { width: 500, height: 300 }
-          })
+          new ImageRun({ data: screeningChart, transformation: { width: 500, height: 300 } })
         ]
       })
     );
@@ -293,43 +271,29 @@ exports.generateReport = async (req, res) => {
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
 
-    // ================= TREATMENT =================
+    // TREATMENT
 
-    let treatmentRows = [
-      ["Scaling", Number(d.scaling || 0)]
-    ];
+    let treatmentRows = [["Scaling", Number(d.scaling || 0)]];
 
     if (d.extraTreatment) {
-
-      try {
-
-        const extra = JSON.parse(d.extraTreatment);
-
-        extra.forEach(i => {
-          treatmentRows.push([i.name, Number(i.value || 0)]);
-        });
-
-      } catch {}
-
+      const extra = JSON.parse(d.extraTreatment);
+      extra.forEach(i => treatmentRows.push([i.name, Number(i.value || 0)]));
     }
 
     const treatmentTable = new Table({
+      alignment: AlignmentType.CENTER,
       width: { size: 60, type: WidthType.PERCENTAGE },
       rows: [
-
         new TableRow({
           children: [
             new TableCell({ children: [normalText("Treatment", true)] }),
             new TableCell({ children: [normalText("No of Patients", true)] })
           ]
         }),
-
         ...treatmentRows.map(row =>
           new TableRow({
             children: row.map(v =>
-              new TableCell({
-                children: [normalText(v, true)]
-              })
+              new TableCell({ children: [normalText(v, true)] })
             )
           })
         )
@@ -344,6 +308,13 @@ exports.generateReport = async (req, res) => {
           data: treatmentRows.map(r => r[1]),
           backgroundColor: "lightblue"
         }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { title: { display: true, text: "Treatment Type" } },
+          y: { title: { display: true, text: "Number of Patients" } }
+        }
       }
     });
 
@@ -355,16 +326,13 @@ exports.generateReport = async (req, res) => {
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new ImageRun({
-            data: treatmentChart,
-            transformation: { width: 500, height: 300 }
-          })
+          new ImageRun({ data: treatmentChart, transformation: { width: 500, height: 300 } })
         ]
       })
     );
 
 
-    // ================= FOOTER =================
+    // FOOTER
 
     const footer = new Footer({
       children: [
@@ -382,58 +350,26 @@ exports.generateReport = async (req, res) => {
       ]
     });
 
-
     const doc = new Document({
-      sections: [{
-        footers: { default: footer },
-        children
-      }]
+      sections: [{ footers: { default: footer }, children }]
     });
-
 
     const buffer = await Packer.toBuffer(doc);
 
-
-    // ===== SAVE FILE =====
-
     const filename = "Camp_Report_" + Date.now() + ".docx";
-
-    const reportDir = path.join(__dirname, "../reports");
-
-    if (!fs.existsSync(reportDir)) {
-      fs.mkdirSync(reportDir, { recursive: true });
-    }
-
-    const reportPath = path.join(reportDir, filename);
-
-    fs.writeFileSync(reportPath, buffer);
-
-
-    // ===== SAVE DB =====
-
-    db.query(
-      "INSERT INTO reports(username,filename,created_date,created_time) VALUES(?,?,CURDATE(),CURTIME())",
-      [req.session?.user || "user", filename]
-    );
-
-
-    // ===== DOWNLOAD =====
 
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
 
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=" + filename
-    );
+    res.setHeader("Content-Disposition", "attachment; filename=" + filename);
 
     res.send(buffer);
 
   } catch (err) {
 
-    console.error("REPORT ERROR:", err);
+    console.error(err);
     res.status(500).send(err.message);
 
   }
