@@ -9,29 +9,24 @@ const {
   UnderlineType,
   Footer,
   TabStopType,
-  TabStopPosition
+  TabStopPosition,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
 } = require("docx");
 
 const { ChartJSNodeCanvas } = require("chartjs-node-canvas");
 require("chart.js/auto");
-
 const fs = require("fs");
-const path = require("path");
-const db = require("../config/db");
 
 const chartCanvas = new ChartJSNodeCanvas({
   width: 800,
-  height: 500
+  height: 500,
 });
 
-async function createChart(config) {
-  return await chartCanvas.renderToBuffer(config);
-}
-
 exports.generateReport = async (req, res) => {
-
   try {
-
     const d = req.body;
     const photos = req.files || [];
     const children = [];
@@ -42,13 +37,13 @@ exports.generateReport = async (req, res) => {
         spacing: { line: 360 },
         children: [
           new TextRun({
-            text: (text || "").toUpperCase(),
+            text: text.toUpperCase(),
             font: "Times New Roman",
             size: 28,
             bold: true,
-            underline: { type: UnderlineType.SINGLE }
-          })
-        ]
+            underline: { type: UnderlineType.SINGLE },
+          }),
+        ],
       });
 
     const normalText = (text, center = false) =>
@@ -57,21 +52,20 @@ exports.generateReport = async (req, res) => {
         spacing: { line: 480 },
         children: [
           new TextRun({
-            text: String(text || ""),
+            text: String(text),
             font: "Times New Roman",
-            size: 24
-          })
-        ]
+            size: 24,
+          }),
+        ],
       });
 
     const blank = () =>
       new Paragraph({
         text: "",
-        spacing: { line: 480 }
+        spacing: { line: 480 },
       });
 
     // ================= PAGE 1 =================
-
     children.push(heading(d.collegeName));
     children.push(heading(d.departmentName));
     children.push(heading(`Camp Report – ${d.campLocation}`));
@@ -98,48 +92,37 @@ exports.generateReport = async (req, res) => {
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
-
     // ================= PAGE 2 PHOTOS =================
-
     children.push(heading("Photos"));
 
     for (let i = 0; i < photos.length; i += 2) {
-
-      const img1 = photos[i] && fs.existsSync(photos[i].path)
-        ? fs.readFileSync(photos[i].path)
-        : null;
-
-      const img2 = photos[i + 1] && fs.existsSync(photos[i + 1].path)
-        ? fs.readFileSync(photos[i + 1].path)
-        : null;
+      const img1 = photos[i] ? fs.readFileSync(photos[i].path) : null;
+      const img2 = photos[i + 1] ? fs.readFileSync(photos[i + 1].path) : null;
 
       children.push(
         new Paragraph({
           tabStops: [
             {
               type: TabStopType.RIGHT,
-              position: TabStopPosition.MAX
-            }
+              position: TabStopPosition.MAX,
+            },
           ],
           spacing: { line: 360 },
           children: [
-
             img1
               ? new ImageRun({
                   data: img1,
-                  transformation: { width: 250, height: 170 }
+                  transformation: { width: 250, height: 170 },
                 })
               : new TextRun(""),
-
             new TextRun({ text: "\t" }),
-
             img2
               ? new ImageRun({
                   data: img2,
-                  transformation: { width: 250, height: 170 }
+                  transformation: { width: 250, height: 170 },
                 })
-              : new TextRun("")
-          ]
+              : new TextRun(""),
+          ],
         })
       );
 
@@ -148,145 +131,206 @@ exports.generateReport = async (req, res) => {
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
+    // ================= PAGE 3 CAMP STATISTICS =================
+    const campTable = new Table({
+      alignment: AlignmentType.CENTER,
+      width: { size: 60, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({ children: [normalText("Gender", true)] }),
+            new TableCell({ children: [normalText("No of Patients", true)] }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({ children: [normalText("Male", true)] }),
+            new TableCell({ children: [normalText(d.maleCount, true)] }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({ children: [normalText("Female", true)] }),
+            new TableCell({ children: [normalText(d.femaleCount, true)] }),
+          ],
+        }),
+      ],
+    });
 
-    // ================= CAMP STATISTICS =================
-
-    const campChart = await createChart({
+    const campChart = await chartCanvas.renderToBuffer({
       type: "bar",
       data: {
         labels: ["Male", "Female"],
-        datasets: [{
-          data: [
-            Number(d.maleCount || 0),
-            Number(d.femaleCount || 0)
-          ],
-          backgroundColor: "lightblue"
-        }]
+        datasets: [
+          {
+            data: [parseInt(d.maleCount), parseInt(d.femaleCount)],
+            backgroundColor: "lightblue",
+          },
+        ],
       },
       options: {
-        plugins: { legend: { display: false } }
-      }
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            title: { display: true, text: "Gender" },
+          },
+          y: {
+            title: { display: true, text: "No of Patients" },
+          },
+        },
+      },
     });
 
     children.push(heading("Camp Statistics"));
+    children.push(campTable);
+    children.push(blank());
 
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new ImageRun({
-            data: campChart,
-            transformation: { width: 500, height: 300 }
-          })
-        ]
+          new ImageRun({ data: campChart, transformation: { width: 500, height: 300 } }),
+        ],
       })
     );
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
-
-    // ================= SCREENING =================
-
-    let screeningRows = [
-      ["Dental Caries", Number(d.dentalCaries || 0)],
-      ["Gingivitis", Number(d.gingivitis || 0)],
-      ["Missing", Number(d.missing || 0)]
+    // ================= PAGE 4 SCREENING STATISTICS =================
+    let screeningDataRows = [
+      ["Dental Caries", d.dentalCaries],
+      ["Gingivitis", d.gingivitis],
+      ["Missing", d.missing],
+      
     ];
 
     if (d.extraScreening) {
-
-      try {
-
-        const extra = JSON.parse(d.extraScreening);
-
-        extra.forEach(i => {
-          screeningRows.push([i.name, Number(i.value || 0)]);
-        });
-
-      } catch {
-        console.log("extraScreening parse error");
-      }
-
+      const extra = JSON.parse(d.extraScreening);
+      extra.forEach((item) => screeningDataRows.push([item.name, item.value]));
     }
 
-    const screeningChart = await createChart({
+    const screeningTable = new Table({
+      alignment: AlignmentType.CENTER,
+      width: { size: 70, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({ children: [normalText("Diagnosis", true)] }),
+            new TableCell({ children: [normalText("No of Patients", true)] }),
+          ],
+        }),
+        ...screeningDataRows.map(
+          (row) =>
+            new TableRow({
+              children: row.map(
+                (val) =>
+                  new TableCell({
+                    children: [normalText(val, true)],
+                    verticalAlign: "center",
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                  })
+              ),
+            })
+        ),
+      ],
+    });
+
+    const screeningChart = await chartCanvas.renderToBuffer({
       type: "bar",
       data: {
-        labels: screeningRows.map(r => r[0]),
-        datasets: [{
-          data: screeningRows.map(r => Number(r[1])),
-          backgroundColor: "lightblue"
-        }]
-      }
+        labels: screeningDataRows.map((r) => r[0]),
+        datasets: [
+          {
+            label: "No of Patients",
+            data: screeningDataRows.map((r) => r[1]),
+            backgroundColor: "lightblue",
+          },
+        ],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { title: { display: true, text: "Diagnosis" } },
+          y: { title: { display: true, text: "No of Patients" } },
+        },
+      },
     });
 
     children.push(heading("Screening Statistics"));
-
+    children.push(screeningTable);
+    children.push(blank());
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new ImageRun({
-            data: screeningChart,
-            transformation: { width: 500, height: 300 }
-          })
-        ]
+          new ImageRun({ data: screeningChart, transformation: { width: 500, height: 300 } }),
+        ],
+        spacing: { line: 360 },
       })
     );
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
-
-    // ================= TREATMENT =================
-
-    let treatmentRows = [
-      ["Scaling", Number(d.scaling || 0)]
-    ];
+    // ================= PAGE 5 TREATMENT =================
+    let treatmentRows = [["Scaling", d.scaling || 0]];
 
     if (d.extraTreatment) {
-
-      try {
-
-        const extra = JSON.parse(d.extraTreatment);
-
-        extra.forEach(i => {
-          treatmentRows.push([i.name, Number(i.value || 0)]);
-        });
-
-      } catch {
-        console.log("extraTreatment parse error");
-      }
-
+      const extraT = JSON.parse(d.extraTreatment);
+      extraT.forEach((item) => treatmentRows.push([item.name, item.value]));
     }
 
-    const treatmentChart = await createChart({
+    const treatmentTable = new Table({
+      alignment: AlignmentType.CENTER,
+      width: { size: 60, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({ children: [normalText("Treatment", true)] }),
+            new TableCell({ children: [normalText("No of Patients", true)] }),
+          ],
+        }),
+        ...treatmentRows.map((row) =>
+          new TableRow({
+            children: row.map((val) => new TableCell({ children: [normalText(val, true)] })),
+          })
+        ),
+      ],
+    });
+
+    const treatmentChart = await chartCanvas.renderToBuffer({
       type: "bar",
       data: {
-        labels: treatmentRows.map(r => r[0]),
-        datasets: [{
-          data: treatmentRows.map(r => Number(r[1])),
-          backgroundColor: "lightblue"
-        }]
-      }
+        labels: treatmentRows.map((r) => r[0]),
+        datasets: [
+          {
+            data: treatmentRows.map((r) => r[1]),
+            backgroundColor: "lightblue",
+          },
+        ],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { title: { display: true, text: "Treatment" } },
+          y: { title: { display: true, text: "No of Patients" } },
+        },
+      },
     });
 
     children.push(heading("Treatment Statistics"));
+    children.push(treatmentTable);
+    children.push(blank());
 
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new ImageRun({
-            data: treatmentChart,
-            transformation: { width: 500, height: 300 }
-          })
-        ]
+          new ImageRun({ data: treatmentChart, transformation: { width: 500, height: 300 } }),
+        ],
       })
     );
 
-
     // ================= FOOTER =================
-
     const footer = new Footer({
       children: [
         new Paragraph({
@@ -296,61 +340,27 @@ exports.generateReport = async (req, res) => {
               text: "HEAD OF THE DEPARTMENT                                      PRINCIPAL",
               font: "Times New Roman",
               size: 28,
-              bold: true
-            })
-          ]
-        })
-      ]
+              bold: true,
+            }),
+          ],
+        }),
+      ],
     });
-
 
     const doc = new Document({
-      sections: [{
-        footers: { default: footer },
-        children
-      }]
+      sections: [
+        {
+          footers: { default: footer },
+          children,
+        },
+      ],
     });
 
-
     const buffer = await Packer.toBuffer(doc);
-
-
-    const filename = "Camp_Report_" + Date.now() + ".docx";
-
-    const reportDir = path.join(__dirname, "../reports");
-
-    if (!fs.existsSync(reportDir)) {
-      fs.mkdirSync(reportDir, { recursive: true });
-    }
-
-    const reportPath = path.join(reportDir, filename);
-
-    fs.writeFileSync(reportPath, buffer);
-
-
-    db.query(
-      "INSERT INTO reports(username,filename,created_date,created_time) VALUES(?,?,CURDATE(),CURTIME())",
-      [req.session?.user || "user", filename]
-    );
-
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    );
-
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=" + filename
-    );
-
+    res.setHeader("Content-Disposition", "attachment; filename=Camp_Report.docx");
     res.send(buffer);
-
   } catch (err) {
-
-    console.error("REPORT ERROR:", err);
-    res.status(500).send(err.message);
-
+    console.log(err);
+    res.status(500).send("Error generating report");
   }
-
 };
