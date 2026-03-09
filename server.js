@@ -10,7 +10,9 @@ const app = express()
 
 app.use(cors({
   origin: "https://mathankumar8248097868-cloud.github.io",
-  credentials: true
+  credentials: true,
+  methods:["GET","POST","PUT","DELETE"],
+  allowedHeaders:["Content-Type"]
 }))
 app.use(express.json())
 
@@ -19,7 +21,8 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   cookie:{
-    secure:false
+    secure:true,
+    sameSite:"none"
   }
 }))
 
