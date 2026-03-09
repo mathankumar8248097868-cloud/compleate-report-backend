@@ -200,10 +200,10 @@ res.json(result)
 app.get("/report",(req,res)=>{
 
 if(!req.session.user){
-return res.redirect("/userlogin.html")
+return res.redirect("https://mathankumar8248097868-cloud.github.io/compelate-recport-creater-frontend/userlogin.html")
 }
 
-res.sendFile(path.join(__dirname,"../frontend/report.html"))
+res.redirect("https://mathankumar8248097868-cloud.github.io/compelate-recport-creater-frontend/report.html")
 
 })
 
@@ -213,10 +213,10 @@ res.sendFile(path.join(__dirname,"../frontend/report.html"))
 app.get("/admin",(req,res)=>{
 
 if(!req.session.admin){
-return res.redirect("/adminlogin.html")
+return res.redirect("https://mathankumar8248097868-cloud.github.io/compelate-recport-creater-frontend/adminlogin.html")
 }
 
-res.sendFile(path.join(__dirname,"../frontend/adminpage.html"))
+res.redirect("https://mathankumar8248097868-cloud.github.io/compelate-recport-creater-frontend/adminpage.html")
 
 })
 
