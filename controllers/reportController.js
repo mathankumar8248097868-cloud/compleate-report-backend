@@ -106,7 +106,7 @@ exports.generateReport = async (req, res) => {
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
 
-    // ================= PHOTOS =================
+    // ================= PAGE 2 PHOTOS =================
 
     children.push(heading("Photos"));
 
@@ -162,7 +162,6 @@ exports.generateReport = async (req, res) => {
     const female = Number(d.femaleCount || 0);
 
     const campTable = new Table({
-      alignment: AlignmentType.CENTER,
       width: { size: 60, type: WidthType.PERCENTAGE },
       rows: [
 
@@ -194,29 +193,11 @@ exports.generateReport = async (req, res) => {
       data: {
         labels: ["Male", "Female"],
         datasets: [{
-          label: "Patients",
           data: [male, female],
           backgroundColor: "lightblue"
         }]
       },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: "Gender"
-            }
-          },
-          y: {
-            title: {
-              display: true,
-              text: "Number of Patients"
-            },
-            beginAtZero: true
-          }
-        }
-      }
+      options: { plugins: { legend: { display: false } } }
     });
 
     children.push(heading("Camp Statistics"));
@@ -247,16 +228,20 @@ exports.generateReport = async (req, res) => {
     ];
 
     if (d.extraScreening) {
+
       try {
+
         const extra = JSON.parse(d.extraScreening);
+
         extra.forEach(i => {
           screeningRows.push([i.name, Number(i.value || 0)]);
         });
+
       } catch {}
+
     }
 
     const screeningTable = new Table({
-      alignment: AlignmentType.CENTER,
       width: { size: 70, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
@@ -283,21 +268,9 @@ exports.generateReport = async (req, res) => {
       data: {
         labels: screeningRows.map(r => r[0]),
         datasets: [{
-          label: "Patients",
           data: screeningRows.map(r => r[1]),
           backgroundColor: "lightblue"
         }]
-      },
-      options: {
-        scales: {
-          x: {
-            title: { display: true, text: "Diagnosis Type" }
-          },
-          y: {
-            title: { display: true, text: "Number of Patients" },
-            beginAtZero: true
-          }
-        }
       }
     });
 
@@ -327,16 +300,20 @@ exports.generateReport = async (req, res) => {
     ];
 
     if (d.extraTreatment) {
+
       try {
+
         const extra = JSON.parse(d.extraTreatment);
+
         extra.forEach(i => {
           treatmentRows.push([i.name, Number(i.value || 0)]);
         });
+
       } catch {}
+
     }
 
     const treatmentTable = new Table({
-      alignment: AlignmentType.CENTER,
       width: { size: 60, type: WidthType.PERCENTAGE },
       rows: [
 
@@ -364,21 +341,9 @@ exports.generateReport = async (req, res) => {
       data: {
         labels: treatmentRows.map(r => r[0]),
         datasets: [{
-          label: "Patients",
           data: treatmentRows.map(r => r[1]),
           backgroundColor: "lightblue"
         }]
-      },
-      options: {
-        scales: {
-          x: {
-            title: { display: true, text: "Treatment Type" }
-          },
-          y: {
-            title: { display: true, text: "Number of Patients" },
-            beginAtZero: true
-          }
-        }
       }
     });
 
@@ -417,6 +382,7 @@ exports.generateReport = async (req, res) => {
       ]
     });
 
+
     const doc = new Document({
       sections: [{
         footers: { default: footer },
@@ -424,9 +390,14 @@ exports.generateReport = async (req, res) => {
       }]
     });
 
+
     const buffer = await Packer.toBuffer(doc);
 
+
+    // ===== SAVE FILE =====
+
     const filename = "Camp_Report_" + Date.now() + ".docx";
+
     const reportDir = path.join(__dirname, "../reports");
 
     if (!fs.existsSync(reportDir)) {
@@ -434,12 +405,19 @@ exports.generateReport = async (req, res) => {
     }
 
     const reportPath = path.join(reportDir, filename);
+
     fs.writeFileSync(reportPath, buffer);
+
+
+    // ===== SAVE DB =====
 
     db.query(
       "INSERT INTO reports(username,filename,created_date,created_time) VALUES(?,?,CURDATE(),CURTIME())",
       [req.session?.user || "user", filename]
     );
+
+
+    // ===== DOWNLOAD =====
 
     res.setHeader(
       "Content-Type",
