@@ -182,9 +182,13 @@ exports.generateReport = async (req, res) => {
       ["Missing", d.missing],
     ];
 
-    if (d.extraScreening) {
-      const extra = JSON.parse(d.extraScreening);
-      extra.forEach((i) => screeningRows.push([i.name, i.value]));
+    if (d.extraScreening && d.extraScreening !== "") {
+      try {
+        const extra = JSON.parse(d.extraScreening);
+        extra.forEach((i) => screeningRows.push([i.name, i.value]));
+      } catch (e) {
+        console.log("extraScreening parse error");
+      }
     }
 
     const screeningChart = await createChart({
@@ -220,9 +224,13 @@ exports.generateReport = async (req, res) => {
 
     let treatmentRows = [["Scaling", d.scaling || 0]];
 
-    if (d.extraTreatment) {
-      const extra = JSON.parse(d.extraTreatment);
-      extra.forEach((i) => treatmentRows.push([i.name, i.value]));
+    if (d.extraTreatment && d.extraTreatment !== "") {
+       try {
+         const extra = JSON.parse(d.extraTreatment);
+         extra.forEach((i) => treatmentRows.push([i.name, i.value]));
+       } catch (e) {
+         console.log("extraTreatment parse error");
+       }
     }
 
     const treatmentChart = await createChart({
@@ -282,19 +290,25 @@ exports.generateReport = async (req, res) => {
     const buffer = await Packer.toBuffer(doc);
 
     const filename = "Camp_Report_" + Date.now() + ".docx";
-    const reportPath = path.join(__dirname, "../reports/", filename);
+    const reportDir = path.join(__dirname, "../reports");
+
+    if (!fs.existsSync(reportDir)) {
+    fs.mkdirSync(reportDir, { recursive: true });
+    }
+
+    const reportPath = path.join(reportDir, filename);
 
     fs.writeFileSync(reportPath, buffer);
 
     db.query(
       "INSERT INTO reports(username,filename,created_date,created_time) VALUES(?,?,CURDATE(),CURTIME())",
-      [req.session.user, filename]
+      [req.session?.user || "user", filename]
     );
 
     res.setHeader("Content-Disposition", "attachment; filename=" + filename);
     res.send(buffer);
   } catch (err) {
-    console.log(err);
-    res.status(500).send("Error generating report");
+    console.error("REPORT ERROR:", err);
+    res.status(500).send(err.message);
   }
 };
