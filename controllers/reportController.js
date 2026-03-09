@@ -34,7 +34,6 @@ async function createChart(config) {
 }
 
 exports.generateReport = async (req, res) => {
-
   try {
 
     const d = req.body;
@@ -106,7 +105,7 @@ exports.generateReport = async (req, res) => {
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
 
-    // ================= PAGE 2 PHOTOS =================
+    // ================= PHOTOS =================
 
     children.push(heading("Photos"));
 
@@ -162,6 +161,7 @@ exports.generateReport = async (req, res) => {
     const female = Number(d.femaleCount || 0);
 
     const campTable = new Table({
+      alignment: AlignmentType.CENTER,
       width: { size: 60, type: WidthType.PERCENTAGE },
       rows: [
 
@@ -196,8 +196,7 @@ exports.generateReport = async (req, res) => {
           data: [male, female],
           backgroundColor: "lightblue"
         }]
-      },
-      options: { plugins: { legend: { display: false } } }
+      }
     });
 
     children.push(heading("Camp Statistics"));
@@ -228,20 +227,14 @@ exports.generateReport = async (req, res) => {
     ];
 
     if (d.extraScreening) {
-
       try {
-
         const extra = JSON.parse(d.extraScreening);
-
-        extra.forEach(i => {
-          screeningRows.push([i.name, Number(i.value || 0)]);
-        });
-
+        extra.forEach(i => screeningRows.push([i.name, Number(i.value || 0)]));
       } catch {}
-
     }
 
     const screeningTable = new Table({
+      alignment: AlignmentType.CENTER,
       width: { size: 70, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
@@ -295,28 +288,19 @@ exports.generateReport = async (req, res) => {
 
     // ================= TREATMENT =================
 
-    let treatmentRows = [
-      ["Scaling", Number(d.scaling || 0)]
-    ];
+    let treatmentRows = [["Scaling", Number(d.scaling || 0)]];
 
     if (d.extraTreatment) {
-
       try {
-
         const extra = JSON.parse(d.extraTreatment);
-
-        extra.forEach(i => {
-          treatmentRows.push([i.name, Number(i.value || 0)]);
-        });
-
+        extra.forEach(i => treatmentRows.push([i.name, Number(i.value || 0)]));
       } catch {}
-
     }
 
     const treatmentTable = new Table({
+      alignment: AlignmentType.CENTER,
       width: { size: 60, type: WidthType.PERCENTAGE },
       rows: [
-
         new TableRow({
           children: [
             new TableCell({ children: [normalText("Treatment", true)] }),
@@ -382,7 +366,6 @@ exports.generateReport = async (req, res) => {
       ]
     });
 
-
     const doc = new Document({
       sections: [{
         footers: { default: footer },
@@ -390,14 +373,11 @@ exports.generateReport = async (req, res) => {
       }]
     });
 
-
     const buffer = await Packer.toBuffer(doc);
-
 
     // ===== SAVE FILE =====
 
     const filename = "Camp_Report_" + Date.now() + ".docx";
-
     const reportDir = path.join(__dirname, "../reports");
 
     if (!fs.existsSync(reportDir)) {
@@ -405,9 +385,7 @@ exports.generateReport = async (req, res) => {
     }
 
     const reportPath = path.join(reportDir, filename);
-
     fs.writeFileSync(reportPath, buffer);
-
 
     // ===== SAVE DB =====
 
@@ -415,7 +393,6 @@ exports.generateReport = async (req, res) => {
       "INSERT INTO reports(username,filename,created_date,created_time) VALUES(?,?,CURDATE(),CURTIME())",
       [req.session?.user || "user", filename]
     );
-
 
     // ===== DOWNLOAD =====
 
@@ -437,5 +414,4 @@ exports.generateReport = async (req, res) => {
     res.status(500).send(err.message);
 
   }
-
 };
