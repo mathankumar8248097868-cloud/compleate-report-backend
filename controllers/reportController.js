@@ -9,11 +9,7 @@ const {
   UnderlineType,
   Footer,
   TabStopType,
-  TabStopPosition,
-  Table,
-  TableRow,
-  TableCell,
-  WidthType,
+  TabStopPosition
 } = require("docx");
 
 const { ChartJSNodeCanvas } = require("chartjs-node-canvas");
@@ -25,7 +21,7 @@ const db = require("../config/db");
 
 const chartCanvas = new ChartJSNodeCanvas({
   width: 800,
-  height: 500,
+  height: 500
 });
 
 async function createChart(config) {
@@ -33,7 +29,9 @@ async function createChart(config) {
 }
 
 exports.generateReport = async (req, res) => {
+
   try {
+
     const d = req.body;
     const photos = req.files || [];
     const children = [];
@@ -48,9 +46,9 @@ exports.generateReport = async (req, res) => {
             font: "Times New Roman",
             size: 28,
             bold: true,
-            underline: { type: UnderlineType.SINGLE },
-          }),
-        ],
+            underline: { type: UnderlineType.SINGLE }
+          })
+        ]
       });
 
     const normalText = (text, center = false) =>
@@ -59,17 +57,17 @@ exports.generateReport = async (req, res) => {
         spacing: { line: 480 },
         children: [
           new TextRun({
-            text: String(text),
+            text: String(text || ""),
             font: "Times New Roman",
-            size: 24,
-          }),
-        ],
+            size: 24
+          })
+        ]
       });
 
     const blank = () =>
       new Paragraph({
         text: "",
-        spacing: { line: 480 },
+        spacing: { line: 480 }
       });
 
     // ================= PAGE 1 =================
@@ -100,38 +98,48 @@ exports.generateReport = async (req, res) => {
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
+
     // ================= PAGE 2 PHOTOS =================
 
     children.push(heading("Photos"));
 
     for (let i = 0; i < photos.length; i += 2) {
-      const img1 = photos[i] ? fs.readFileSync(photos[i].path) : null;
-      const img2 = photos[i + 1] ? fs.readFileSync(photos[i + 1].path) : null;
+
+      const img1 = photos[i] && fs.existsSync(photos[i].path)
+        ? fs.readFileSync(photos[i].path)
+        : null;
+
+      const img2 = photos[i + 1] && fs.existsSync(photos[i + 1].path)
+        ? fs.readFileSync(photos[i + 1].path)
+        : null;
 
       children.push(
         new Paragraph({
           tabStops: [
             {
               type: TabStopType.RIGHT,
-              position: TabStopPosition.MAX,
-            },
+              position: TabStopPosition.MAX
+            }
           ],
           spacing: { line: 360 },
           children: [
+
             img1
               ? new ImageRun({
                   data: img1,
-                  transformation: { width: 250, height: 170 },
+                  transformation: { width: 250, height: 170 }
                 })
               : new TextRun(""),
+
             new TextRun({ text: "\t" }),
+
             img2
               ? new ImageRun({
                   data: img2,
-                  transformation: { width: 250, height: 170 },
+                  transformation: { width: 250, height: 170 }
                 })
-              : new TextRun(""),
-          ],
+              : new TextRun("")
+          ]
         })
       );
 
@@ -140,22 +148,24 @@ exports.generateReport = async (req, res) => {
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
-    // ================= PAGE 3 CAMP STATISTICS =================
+
+    // ================= CAMP STATISTICS =================
 
     const campChart = await createChart({
       type: "bar",
       data: {
         labels: ["Male", "Female"],
-        datasets: [
-          {
-            data: [parseInt(d.maleCount), parseInt(d.femaleCount)],
-            backgroundColor: "lightblue",
-          },
-        ],
+        datasets: [{
+          data: [
+            Number(d.maleCount || 0),
+            Number(d.femaleCount || 0)
+          ],
+          backgroundColor: "lightblue"
+        }]
       },
       options: {
-        plugins: { legend: { display: false } },
-      },
+        plugins: { legend: { display: false } }
+      }
     });
 
     children.push(heading("Camp Statistics"));
@@ -166,42 +176,48 @@ exports.generateReport = async (req, res) => {
         children: [
           new ImageRun({
             data: campChart,
-            transformation: { width: 500, height: 300 },
-          }),
-        ],
+            transformation: { width: 500, height: 300 }
+          })
+        ]
       })
     );
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
+
     // ================= SCREENING =================
 
     let screeningRows = [
-      ["Dental Caries", d.dentalCaries],
-      ["Gingivitis", d.gingivitis],
-      ["Missing", d.missing],
+      ["Dental Caries", Number(d.dentalCaries || 0)],
+      ["Gingivitis", Number(d.gingivitis || 0)],
+      ["Missing", Number(d.missing || 0)]
     ];
 
-    if (d.extraScreening && d.extraScreening !== "") {
+    if (d.extraScreening) {
+
       try {
+
         const extra = JSON.parse(d.extraScreening);
-        extra.forEach((i) => screeningRows.push([i.name, i.value]));
-      } catch (e) {
+
+        extra.forEach(i => {
+          screeningRows.push([i.name, Number(i.value || 0)]);
+        });
+
+      } catch {
         console.log("extraScreening parse error");
       }
+
     }
 
     const screeningChart = await createChart({
       type: "bar",
       data: {
-        labels: screeningRows.map((r) => r[0]),
-        datasets: [
-          {
-            data: screeningRows.map((r) => r[1]),
-            backgroundColor: "lightblue",
-          },
-        ],
-      },
+        labels: screeningRows.map(r => r[0]),
+        datasets: [{
+          data: screeningRows.map(r => Number(r[1])),
+          backgroundColor: "lightblue"
+        }]
+      }
     });
 
     children.push(heading("Screening Statistics"));
@@ -212,38 +228,46 @@ exports.generateReport = async (req, res) => {
         children: [
           new ImageRun({
             data: screeningChart,
-            transformation: { width: 500, height: 300 },
-          }),
-        ],
+            transformation: { width: 500, height: 300 }
+          })
+        ]
       })
     );
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
+
     // ================= TREATMENT =================
 
-    let treatmentRows = [["Scaling", d.scaling || 0]];
+    let treatmentRows = [
+      ["Scaling", Number(d.scaling || 0)]
+    ];
 
-    if (d.extraTreatment && d.extraTreatment !== "") {
-       try {
-         const extra = JSON.parse(d.extraTreatment);
-         extra.forEach((i) => treatmentRows.push([i.name, i.value]));
-       } catch (e) {
-         console.log("extraTreatment parse error");
-       }
+    if (d.extraTreatment) {
+
+      try {
+
+        const extra = JSON.parse(d.extraTreatment);
+
+        extra.forEach(i => {
+          treatmentRows.push([i.name, Number(i.value || 0)]);
+        });
+
+      } catch {
+        console.log("extraTreatment parse error");
+      }
+
     }
 
     const treatmentChart = await createChart({
       type: "bar",
       data: {
-        labels: treatmentRows.map((r) => r[0]),
-        datasets: [
-          {
-            data: treatmentRows.map((r) => r[1]),
-            backgroundColor: "lightblue",
-          },
-        ],
-      },
+        labels: treatmentRows.map(r => r[0]),
+        datasets: [{
+          data: treatmentRows.map(r => Number(r[1])),
+          backgroundColor: "lightblue"
+        }]
+      }
     });
 
     children.push(heading("Treatment Statistics"));
@@ -254,11 +278,12 @@ exports.generateReport = async (req, res) => {
         children: [
           new ImageRun({
             data: treatmentChart,
-            transformation: { width: 500, height: 300 },
-          }),
-        ],
+            transformation: { width: 500, height: 300 }
+          })
+        ]
       })
     );
+
 
     // ================= FOOTER =================
 
@@ -271,44 +296,61 @@ exports.generateReport = async (req, res) => {
               text: "HEAD OF THE DEPARTMENT                                      PRINCIPAL",
               font: "Times New Roman",
               size: 28,
-              bold: true,
-            }),
-          ],
-        }),
-      ],
+              bold: true
+            })
+          ]
+        })
+      ]
     });
 
+
     const doc = new Document({
-      sections: [
-        {
-          footers: { default: footer },
-          children,
-        },
-      ],
+      sections: [{
+        footers: { default: footer },
+        children
+      }]
     });
+
 
     const buffer = await Packer.toBuffer(doc);
 
+
     const filename = "Camp_Report_" + Date.now() + ".docx";
+
     const reportDir = path.join(__dirname, "../reports");
 
     if (!fs.existsSync(reportDir)) {
-    fs.mkdirSync(reportDir, { recursive: true });
+      fs.mkdirSync(reportDir, { recursive: true });
     }
 
     const reportPath = path.join(reportDir, filename);
 
     fs.writeFileSync(reportPath, buffer);
 
+
     db.query(
       "INSERT INTO reports(username,filename,created_date,created_time) VALUES(?,?,CURDATE(),CURTIME())",
       [req.session?.user || "user", filename]
     );
 
-    res.setHeader("Content-Disposition", "attachment; filename=" + filename);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=" + filename
+    );
+
     res.send(buffer);
+
   } catch (err) {
+
     console.error("REPORT ERROR:", err);
     res.status(500).send(err.message);
+
   }
+
 };
