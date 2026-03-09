@@ -16,9 +16,12 @@ const {
   WidthType,
 } = require("docx");
 
-const { ChartJSNodeCanvas } = require("chartjs-node-canvas");
-require("chart.js/auto");
-const fs = require("fs");
+const fs = require("fs")
+const path = require("path")
+const db = require("../config/db")
+
+const { ChartJSNodeCanvas } = require("chartjs-node-canvas")
+require("chart.js/auto")
 
 const chartCanvas = new ChartJSNodeCanvas({
   width: 800,
@@ -31,20 +34,20 @@ exports.generateReport = async (req, res) => {
     const photos = req.files || [];
     const children = [];
 
-    const heading = (text) =>
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { line: 360 },
-        children: [
-          new TextRun({
-            text: text.toUpperCase(),
-            font: "Times New Roman",
-            size: 28,
-            bold: true,
-            underline: { type: UnderlineType.SINGLE },
-          }),
-        ],
-      });
+  const heading = (text) =>
+  new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { line: 360 },
+    children: [
+      new TextRun({
+        text: (text || "").toUpperCase(),
+        font: "Times New Roman",
+        size: 28,
+        bold: true,
+        underline: { type: UnderlineType.SINGLE },
+      }),
+    ],
+  });
 
     const normalText = (text, center = false) =>
       new Paragraph({
@@ -357,8 +360,22 @@ exports.generateReport = async (req, res) => {
     });
 
     const buffer = await Packer.toBuffer(doc);
-    res.setHeader("Content-Disposition", "attachment; filename=Camp_Report.docx");
-    res.send(buffer);
+
+    const filename = "Camp_Report_" + Date.now() + ".docx"
+    const reportPath = path.join(__dirname,"../reports/",filename)
+
+    // save report file in server
+    fs.writeFileSync(reportPath,buffer)
+
+    // save report info in database
+    db.query(
+    "INSERT INTO reports(username,filename,created_date,created_time) VALUES(?,?,CURDATE(),CURTIME())",
+    [req.session.user,filename]
+    )
+
+// download file to user
+res.setHeader("Content-Disposition","attachment; filename="+filename)
+res.send(buffer)
   } catch (err) {
     console.log(err);
     res.status(500).send("Error generating report");
