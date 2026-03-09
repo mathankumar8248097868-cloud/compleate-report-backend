@@ -41,7 +41,7 @@ exports.generateReport = async (req, res) => {
     const photos = req.files || [];
     const children = [];
 
-    // ========= TEXT FUNCTIONS =========
+    // ===== TEXT FUNCTIONS =====
 
     const heading = (text) =>
       new Paragraph({
@@ -316,6 +316,7 @@ exports.generateReport = async (req, res) => {
     const treatmentTable = new Table({
       width: { size: 60, type: WidthType.PERCENTAGE },
       rows: [
+
         new TableRow({
           children: [
             new TableCell({ children: [normalText("Treatment", true)] }),
@@ -329,7 +330,8 @@ exports.generateReport = async (req, res) => {
               new TableCell({
                 children: [normalText(v, true)]
               })
-            })
+            )
+          })
         )
       ]
     });
@@ -388,10 +390,11 @@ exports.generateReport = async (req, res) => {
       }]
     });
 
+
     const buffer = await Packer.toBuffer(doc);
 
 
-    // ================= SAVE FILE =================
+    // ===== SAVE FILE =====
 
     const filename = "Camp_Report_" + Date.now() + ".docx";
 
@@ -406,7 +409,7 @@ exports.generateReport = async (req, res) => {
     fs.writeFileSync(reportPath, buffer);
 
 
-    // ================= SAVE DB =================
+    // ===== SAVE DB =====
 
     db.query(
       "INSERT INTO reports(username,filename,created_date,created_time) VALUES(?,?,CURDATE(),CURTIME())",
@@ -414,7 +417,7 @@ exports.generateReport = async (req, res) => {
     );
 
 
-    // ================= DOWNLOAD =================
+    // ===== DOWNLOAD =====
 
     res.setHeader(
       "Content-Type",
