@@ -11,10 +11,10 @@ const app = express()
 app.set("trust proxy", 1)
 
 app.use(cors({
-  origin: "https://mathankumar8248097868-cloud.github.io",
-  credentials: true,
-  methods:["GET","POST","PUT","DELETE"],
-  allowedHeaders:["Content-Type"]
+  origin: [
+    "https://mathankumar8248097868-cloud.github.io"
+  ],
+  credentials: true
 }))
 app.use(express.json())
 
@@ -25,8 +25,7 @@ app.use(session({
   proxy: true,
   cookie:{
     secure:true,
-    sameSite:"none",
-    httpOnly:true
+    sameSite:"none"
   }
 }))
 
